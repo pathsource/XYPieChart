@@ -94,7 +94,7 @@
 
 @implementation XYPieChart
 {
-    NSInteger _selectedSliceIndex;
+    //NSInteger _selectedSliceIndex; // expose as property, no longer need this line
     //pie view, contains all slices
     UIView  *_pieView;
     
@@ -224,6 +224,17 @@ static CGPathRef CGPathCreateArc(CGPoint center, CGFloat radius, CGFloat startAn
 }
 
 #pragma mark - manage settings
+
+-(void)rotateTextToAngle:(CGFloat)angle {
+    
+    CALayer *parentLayer = [_pieView layer];
+    NSArray *slicelayers = [parentLayer sublayers];
+    
+    [slicelayers enumerateObjectsUsingBlock:^(SliceLayer *sliceLayer, NSUInteger idx, BOOL *stop) {
+        CATextLayer *textLayer = sliceLayer.sublayers.firstObject;
+        textLayer.transform = CATransform3DMakeRotation(angle, 0, 0, 1);
+    }];
+}
 
 - (void)setShowPercentage:(BOOL)showPercentage
 {
@@ -495,7 +506,7 @@ static CGPathRef CGPathCreateArc(CGPoint center, CGFloat radius, CGFloat startAn
         
         if (CGPathContainsPoint(path, &transform, point, 0)) {
             [pieLayer setLineWidth:_selectedSliceStroke];
-            [pieLayer setStrokeColor:[UIColor whiteColor].CGColor];
+            [pieLayer setStrokeColor:[UIColor clearColor].CGColor]; //sss// change whiteColor to clearColor
             [pieLayer setLineJoin:kCALineJoinBevel];
             [pieLayer setZPosition:MAXFLOAT];
             selectedIndex = idx;
@@ -544,7 +555,7 @@ static CGPathRef CGPathCreateArc(CGPoint center, CGFloat radius, CGFloat startAn
 - (void)notifyDelegateOfSelectionChangeFrom:(NSUInteger)previousSelection to:(NSUInteger)newSelection
 {
     if (previousSelection != newSelection){
-        if(previousSelection != -1){
+        if (previousSelection != -1){
             NSUInteger tempPre = previousSelection;
             if ([_delegate respondsToSelector:@selector(pieChart:willDeselectSliceAtIndex:)])
                 [_delegate pieChart:self willDeselectSliceAtIndex:tempPre];
@@ -596,6 +607,7 @@ static CGPathRef CGPathCreateArc(CGPoint center, CGFloat radius, CGFloat startAn
         CGPoint newPos = CGPointMake(currPos.x + _selectedSliceOffsetRadius*cos(middleAngle), currPos.y + _selectedSliceOffsetRadius*sin(middleAngle));
         layer.position = newPos;
         layer.isSelected = YES;
+        _selectedSliceIndex = index; //sss//
     }
 }
 
@@ -607,6 +619,7 @@ static CGPathRef CGPathCreateArc(CGPoint center, CGFloat radius, CGFloat startAn
     if (layer && layer.isSelected) {
         layer.position = CGPointMake(0, 0);
         layer.isSelected = NO;
+        _selectedSliceIndex = -1; //sss//
     }
 }
 
@@ -616,7 +629,7 @@ static CGPathRef CGPathCreateArc(CGPoint center, CGFloat radius, CGFloat startAn
 {
     SliceLayer *pieLayer = [SliceLayer layer];
     [pieLayer setZPosition:0];
-    [pieLayer setStrokeColor:NULL];
+    [pieLayer setStrokeColor:[UIColor clearColor].CGColor]; //sss// change NULL to clear color
     CATextLayer *textLayer = [CATextLayer layer];
     textLayer.contentsScale = [[UIScreen mainScreen] scale];
     CGFontRef font = nil;
@@ -656,7 +669,7 @@ static CGPathRef CGPathCreateArc(CGPoint center, CGFloat radius, CGFloat startAn
     if(!_showLabel) return;
     NSString *label;
     if(_showPercentage)
-        label = [NSString stringWithFormat:@"%0.0f", pieLayer.percentage*100];
+        label = [NSString stringWithFormat:@"%0.0f%%", pieLayer.percentage*100];
     else
         label = (pieLayer.text)?pieLayer.text:[NSString stringWithFormat:@"%0.0f", value];
     
@@ -673,6 +686,14 @@ static CGPathRef CGPathCreateArc(CGPoint center, CGFloat radius, CGFloat startAn
         [textLayer setBounds:CGRectMake(0, 0, size.width, size.height)];
     }
     [CATransaction setDisableActions:NO];
+}
+
+- (void)clean
+{
+    NSArray* sublayers = [[_pieView.layer sublayers] copy];
+    for (CALayer* layer in sublayers) {
+        [layer removeFromSuperlayer];
+    }
 }
 
 @end
